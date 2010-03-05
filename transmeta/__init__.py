@@ -82,6 +82,10 @@ class TransMeta(models.base.ModelBase):
     '''
 
     def __new__(cls, name, bases, attrs):
+        translate_verbose_names = True
+        if 'Meta' in attrs and hasattr(attrs['Meta'], 'translate_verbose_names'):
+            translate_verbose_names = attrs['Meta'].translate_verbose_names
+            delattr(attrs['Meta'], 'translate_verbose_names')
         if 'Meta' in attrs and hasattr(attrs['Meta'], 'translate'):
             fields = attrs['Meta'].translate
             delattr(attrs['Meta'], 'translate')
@@ -122,6 +126,8 @@ class TransMeta(models.base.ModelBase):
                         lang_attr.null = True
                     if not lang_attr.blank:
                         lang_attr.blank = True
+                if lang_attr.verbose_name and translate_verbose_names:
+                    lang_attr.verbose_name = u'%s (%s)' % (lang_attr.verbose_name, lang_code)
                 attrs[lang_attr_name] = lang_attr
             del attrs[field]
             attrs[field] = property(default_value(field))
