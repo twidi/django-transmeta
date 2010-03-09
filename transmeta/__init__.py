@@ -4,7 +4,6 @@ from django.db import models
 from django.db.models.fields import NOT_PROVIDED
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.utils.translation import get_language
 from django.utils.translation import get_language, string_concat
 
 LANGUAGE_CODE = 0
@@ -36,14 +35,14 @@ def get_all_translatable_fields(model):
     return tuple(model_trans_fields)
 
 
-def default_value(field):
+def default_value_getter(field):
     '''
     When accessing to the name of the field itself, the value
     in the current language will be returned. Unless it's set,
     the value in the default language will be returned.
     '''
 
-    def default_value_func(self):
+    def default_value_func_getter(self):
         attname = lambda x: get_real_fieldname(field, x)
 
         if getattr(self, attname(get_language()), None):
@@ -59,7 +58,31 @@ def default_value(field):
             result = getattr(self, default_transmeta_attr, None)
         return result
 
-    return default_value_func
+    return default_value_func_getter
+
+
+def default_value_setter(field):
+    '''
+    When setting to the name of the field itself, the value
+    in the current language will be set.
+    '''
+
+    def default_value_func_setter(self, value):
+        attname = lambda x: get_real_fieldname(field, x)
+
+        if getattr(self, attname(get_language()), None):
+            setattr(self, attname(get_language()), value )
+        elif getattr(self, attname(get_language()[:2]), None):
+            setattr(self, attname(get_language()[:2]), value)
+        elif getattr(self, attname(settings.LANGUAGE_CODE), None):
+            setattr(self, attname(settings.LANGUAGE_CODE),  value)
+        else:
+            default_transmeta_attr = attname(
+                getattr(settings, 'TRANSMETA_DEFAULT_LANGUAGE', 'en')
+            )
+            setattr(self, default_transmeta_attr, value)
+
+    return default_value_func_setter
 
 
 class TransMeta(models.base.ModelBase):
@@ -131,7 +154,7 @@ class TransMeta(models.base.ModelBase):
                     lang_attr.verbose_name = string_concat(lang_attr.verbose_name, u' (%s)' % lang_code)
                 attrs[lang_attr_name] = lang_attr
             del attrs[field]
-            attrs[field] = property(default_value(field))
+            attrs[field] = property(default_value_getter(field), default_value_setter(field))
 
         new_class = super(TransMeta, cls).__new__(cls, name, bases, attrs)
         if hasattr(new_class, '_meta'):
