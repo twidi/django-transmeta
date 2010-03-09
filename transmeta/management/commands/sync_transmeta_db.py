@@ -23,12 +23,12 @@ def ask_for_default_language():
         print '\t%d. %s' % (i+1, lang_tuple[1])
     print 'Choose a language in which to put current untranslated data.'
     while True:
-        prompt = "What's the language of current data? (1-%s) " % len(lang_tuple)
+        prompt = "What's the language of current data? (1-%s) " % len(settings.LANGUAGES)
         answer = raw_input(prompt).strip()
         if answer != '':
             try:
                 index = int(answer) - 1
-                if index < 0 or index > len(settings.LANGUAGES):
+                if index < 0 or index > len(settings.LANGUAGES)-1:
                     print "That's not a valid number"
                 else:
                     return settings.LANGUAGES[index][0]
@@ -144,7 +144,7 @@ class Command(BaseCommand):
             if not f.null and lang == self.default_lang:
                 # changing to NOT NULL after having data copied
                 sql_output.append("ALTER TABLE %s ALTER COLUMN %s SET %s" % \
-                                  (qn(db_table), qn(f.column), \
+                                  (qn(db_table), qn(f.column), col_type, \
                                   style.SQL_KEYWORD('NOT NULL')))
         if not was_translatable_before:
             # we drop field only if field was no translatable before
