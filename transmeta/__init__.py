@@ -13,7 +13,7 @@ LANGUAGE_NAME = 1
 def get_real_fieldname(field, lang=None):
     if lang is None:
        lang = get_language()
-    return str('%s_%s' % (field, lang))
+    return str('%s_%s' % (field, lang.replace('-', '_')))
 
 
 def get_real_fieldname_in_each_language(field):
@@ -70,17 +70,18 @@ def default_value_setter(field):
     def default_value_func_setter(self, value):
         attname = lambda x: get_real_fieldname(field, x)
 
-        if getattr(self, attname(get_language()), None):
-            setattr(self, attname(get_language()), value )
-        elif getattr(self, attname(get_language()[:2]), None):
+        if hasattr(self, attname(get_language())):
+            setattr(self, attname(get_language()), value)
+        elif hasattr(self, attname(get_language()[:2])):
             setattr(self, attname(get_language()[:2]), value)
-        elif getattr(self, attname(settings.LANGUAGE_CODE), None):
-            setattr(self, attname(settings.LANGUAGE_CODE),  value)
+        elif hasattr(self, attname(settings.LANGUAGE_CODE)):
+            setattr(self, attname(settings.LANGUAGE_CODE), value)
         else:
             default_transmeta_attr = attname(
                 getattr(settings, 'TRANSMETA_DEFAULT_LANGUAGE', 'en')
             )
-            setattr(self, default_transmeta_attr, value)
+            if hasattr(self, attname(default_transmeta_attr)):
+                setattr(self, default_transmeta_attr, value)
 
     return default_value_func_setter
 
