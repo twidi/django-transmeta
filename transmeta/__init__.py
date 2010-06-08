@@ -16,6 +16,10 @@ def get_real_fieldname(field, lang=None):
     return str('%s_%s' % (field, lang.replace('-', '_')))
 
 
+def get_fallback_fieldname(field, lang=None):
+    return get_real_fieldname(field, lang=lang or fallback_language())
+
+
 def get_real_fieldname_in_each_language(field):
     return [get_real_fieldname(field, lang[LANGUAGE_CODE])
             for lang in settings.LANGUAGES]
@@ -30,7 +34,6 @@ def fallback_language():
     """ returns fallback language """
     return getattr(settings, 'TRANSMETA_DEFAULT_LANGUAGE', \
                    settings.LANGUAGE_CODE)
-
 
 
 def get_all_translatable_fields(model):
