@@ -16,8 +16,8 @@ def get_real_fieldname(field, lang=None):
     return str('%s_%s' % (field, lang.replace('-', '_')))
 
 
-def get_fallback_fieldname(field, lang=None):
-    return get_real_fieldname(field, lang=lang or fallback_language())
+def get_fallback_fieldname(field):
+    return get_real_fieldname(field, lang=fallback_language())
 
 
 def get_real_fieldname_in_each_language(field):
@@ -55,10 +55,11 @@ def default_value_getter(field):
     def default_value_func_getter(self):
         attname = lambda x: get_real_fieldname(field, x)
 
-        if getattr(self, attname(get_language()), None):
-            result = getattr(self, attname(get_language()))
-        elif getattr(self, attname(get_language()[:2]), None):
-            result = getattr(self, attname(get_language()[:2]))
+        language = get_language()
+        if getattr(self, attname(language), None):
+            result = getattr(self, attname(language))
+        elif getattr(self, attname(language[:2]), None):
+            result = getattr(self, attname(language[:2]))
         else:
             default_language = fallback_language()
             result = getattr(self, attname(default_language), None)
@@ -76,10 +77,11 @@ def default_value_setter(field):
     def default_value_func_setter(self, value):
         attname = lambda x: get_real_fieldname(field, x)
 
-        if hasattr(self, attname(get_language())):
-            setattr(self, attname(get_language()), value)
-        elif hasattr(self, attname(get_language()[:2])):
-            setattr(self, attname(get_language()[:2]), value)
+        language = get_language()
+        if hasattr(self, attname(language)):
+            setattr(self, attname(language), value)
+        elif hasattr(self, attname(language[:2])):
+            setattr(self, attname(language[:2]), value)
         else:
             default_language = fallback_language()
             if hasattr(self, attname(default_language)):
