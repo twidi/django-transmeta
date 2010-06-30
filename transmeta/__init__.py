@@ -55,15 +55,28 @@ def default_value_getter(field):
     def default_value_func_getter(self):
         attname = lambda x: get_real_fieldname(field, x)
 
-        language = get_language()
-        if getattr(self, attname(language), None):
-            result = getattr(self, attname(language))
-        elif getattr(self, attname(language[:2]), None):
-            result = getattr(self, attname(language[:2]))
+        language = None
+        current_language = get_language()
+
+        if getattr(self, attname(current_language), None):
+            language = current_language
+        elif getattr(self, attname(current_language[:2]), None):
+            language = current_language[:2]
         else:
-            default_language = fallback_language()
-            result = getattr(self, attname(default_language), None)
-        return result
+            try:
+                default_language = getattr(self, getattr(self._meta, 'default_language_field'))
+                if not default_language:
+                    raise
+            except:
+                default_language = fallback_language()
+
+            if getattr(self, attname(default_language), None):
+                language = default_language
+            else:
+                language = default_language[:2]
+
+        if language:
+            return getattr(self, attname(language))
 
     return default_value_func_getter
 
@@ -77,15 +90,28 @@ def default_value_setter(field):
     def default_value_func_setter(self, value):
         attname = lambda x: get_real_fieldname(field, x)
 
-        language = get_language()
-        if hasattr(self, attname(language)):
-            setattr(self, attname(language), value)
-        elif hasattr(self, attname(language[:2])):
-            setattr(self, attname(language[:2]), value)
+        language = None
+        current_language = get_language()
+
+        if hasattr(self, attname(current_language)):
+            language = current_language
+        elif hasattr(self, attname(current_language[:2])):
+            language = current_language[:2]
         else:
-            default_language = fallback_language()
+            try:
+                default_language = getattr(self, getattr(self._meta, 'default_language_field'))
+                if not default_language:
+                    raise
+            except:
+                default_language = fallback_language()
+
             if hasattr(self, attname(default_language)):
-                setattr(self, default_language, value)
+                language = default_language
+            elif hasattr(self, attname(default_language[:2])):
+                language = default_language[:2]
+
+        if language:
+            setattr(self, attname(language), value)
 
     return default_value_func_setter
 
@@ -101,13 +127,25 @@ class TransMeta(models.base.ModelBase):
             my_field = models.CharField(max_length=20)
             my_i18n_field = models.CharField(max_length=30)
 
+            # default_lang below is optional, used with default_language_field in Meta class
+            # and it can has whatever name you want
+            default_lang = models.CharField(max_length=5,
+                choices=settings.LANGUAGES, blank=True, verbose_name=_("Default language"))
+
             class Meta:
                 translate = ('my_i18n_field',)
+
+                # name of the field which will store the default lang for this object, used 
+				# in setter if no field for current language, and in getter if field is empty 
+				# for currentlanguage. If not present or no field for it, then default language
+				# code is used (settings.TRANSMETA_DEFAULT_LANGUAGE or LANGUAGE_CODE)
+                default_language_field = 'default_lang'
 
     Then we'll be able to access a specific language by
     <field_name>_<language_code>. If just <field_name> is
     accessed, we'll get the value of the current language,
-    or if null, the value in the default language.
+    or if null, the value in the default_language_field
+    language if set, else the value in the default language.
     '''
 
     def __new__(cls, name, bases, attrs):
@@ -160,7 +198,16 @@ class TransMeta(models.base.ModelBase):
             del attrs[field]
             attrs[field] = property(default_value_getter(field), default_value_setter(field))
 
+        default_language_field = None
+        if 'Meta' in attrs and hasattr(attrs['Meta'], 'default_language_field'):
+            default_language_field = attrs['Meta'].default_language_field
+            if not default_language_field in attrs:
+                default_language_field = None
+            delattr(attrs['Meta'], 'default_language_field')
+
         new_class = super(TransMeta, cls).__new__(cls, name, bases, attrs)
         if hasattr(new_class, '_meta'):
             new_class._meta.translatable_fields = fields
+            if default_language_field:
+                new_class._meta.default_language_field = default_language_field
         return new_class
