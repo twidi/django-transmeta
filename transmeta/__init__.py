@@ -129,6 +129,7 @@ class TransMeta(models.base.ModelBase):
 
             # default_lang below is optional, used with default_language_field in Meta class
             # and it can has whatever name you want
+            # the value must be set in your application !
             default_lang = models.CharField(max_length=5,
                 choices=settings.LANGUAGES, blank=True, verbose_name=_("Default language"))
 
@@ -136,9 +137,9 @@ class TransMeta(models.base.ModelBase):
                 translate = ('my_i18n_field',)
 
                 # name of the field which will store the default lang for this object, used 
-				# in setter if no field for current language, and in getter if field is empty 
-				# for currentlanguage. If not present or no field for it, then default language
-				# code is used (settings.TRANSMETA_DEFAULT_LANGUAGE or LANGUAGE_CODE)
+                # in setter if no field for current language, and in getter if field is empty 
+                # for currentlanguage. If not present or no field for it, then default language
+                # code is used (settings.TRANSMETA_DEFAULT_LANGUAGE or LANGUAGE_CODE)
                 default_language_field = 'default_lang'
 
     Then we'll be able to access a specific language by
