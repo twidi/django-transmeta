@@ -174,14 +174,21 @@ class TransMeta(models.base.ModelBase):
 
         default_language = fallback_language()
 
+        all_fields = dict((attr_name, attr) for attr_name, attr in attrs.iteritems() \
+                                if isinstance(attr, models.fields.Field))
+        abstract_model_bases = [base for base in bases if hasattr(base, '_meta') \
+                                and base._meta.abstract]
+        for base in abstract_model_bases:
+            all_fields.update(
+                dict((field.name, field) for field in base._meta.fields)
+            )
         for field in fields:
-            if not field in attrs or \
-               not isinstance(attrs[field], models.fields.Field):
-                    raise ImproperlyConfigured(
-                        "There is no field %(field)s in model %(name)s, "\
-                        "as specified in Meta's translate attribute" % \
-                        dict(field=field, name=name))
-            original_attr = attrs[field]
+            if not field in all_fields:
+                raise ImproperlyConfigured(
+                    "There is no field %(field)s in model %(name)s, "\
+                    "as specified in Meta's translate attribute" % \
+                    dict(field=field, name=name))
+            original_attr = all_fields[field]
             for lang in settings.LANGUAGES:
                 lang_code = lang[LANGUAGE_CODE]
                 lang_attr = copy.copy(original_attr)
@@ -196,7 +203,8 @@ class TransMeta(models.base.ModelBase):
                 if lang_attr.verbose_name and translate_verbose_names:
                     lang_attr.verbose_name = string_concat(lang_attr.verbose_name, u' (%s)' % lang_code)
                 attrs[lang_attr_name] = lang_attr
-            del attrs[field]
+            if field in attrs:
+                del attrs[field]
             attrs[field] = property(default_value_getter(field), default_value_setter(field))
 
         default_language_field = None
